@@ -1,0 +1,725 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phytosense - Plant Stress Classification</title>
+  <meta name="description" content="Phytosense: CNN-based plant bioelectric signal stress classifier dashboard." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 1rem;
+    }
+    .logo-pill {
+      background: #16a34a;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .site-header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .site-header .subtitle {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-left: 0.5rem;
+    }
+    .header-nav {
+      margin-left: auto;
+      display: flex;
+      gap: 1.5rem;
+    }
+    .header-nav a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #475569;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .header-nav a:hover { color: #16a34a; }
+
+    /* ── HERO BANNER ── */
+    .hero {
+      background: linear-gradient(135deg, #166534 0%, #15803d 50%, #16a34a 100%);
+      color: #fff;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    .hero h2 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .hero p  { font-size: 1rem; opacity: 0.88; max-width: 560px; margin: 0 auto 1.5rem; }
+    .hero-badges { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+    .badge {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
+      padding: 0.35rem 0.85rem;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    /* ── LAYOUT ── */
+    .page-wrap {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+      margin-left: 0.5rem;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    /* ── STAT CARDS ROW ── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .si-green { background: #dcfce7; }
+    .si-blue  { background: #dbeafe; }
+    .si-amber { background: #fef3c7; }
+    .si-rose  { background: #ffe4e6; }
+    .stat-val { font-size: 1.5rem; font-weight: 700; color: #0f172a; line-height: 1; }
+    .stat-lbl { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+
+    /* ── GRID ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+
+    /* ── SIGNAL VIEWER ── */
+    .signal-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .signal-controls label { font-size: 0.85rem; font-weight: 500; color: #374151; }
+    .select-box {
+      padding: 0.45rem 0.85rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      background: #fff;
+      color: #1e293b;
+      cursor: pointer;
+    }
+    .select-box:focus { outline: 2px solid #16a34a; outline-offset: 1px; }
+    .btn {
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-green { background: #16a34a; color: #fff; }
+    .btn-green:hover { background: #15803d; }
+    .btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+    .btn-outline:hover { background: #f9fafb; }
+
+    .class-chip {
+      display: inline-block;
+      padding: 0.3rem 0.75rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .chip-0 { background: #dcfce7; color: #15803d; }
+    .chip-1 { background: #fef3c7; color: #92400e; }
+    .chip-2 { background: #dbeafe; color: #1d4ed8; }
+    .chip-3 { background: #ffe4e6; color: #be123c; }
+    .chip-4 { background: #fce7f3; color: #9d174d; }
+
+    .chart-wrap { position: relative; height: 240px; }
+
+    /* ── CLASSIFICATION TABLE ── */
+    .report-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .report-table th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #374151;
+      text-align: left;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .report-table td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      color: #374151;
+    }
+    .report-table tr:last-child td { border-bottom: none; font-weight: 600; }
+    .score-bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .score-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: #dcfce7;
+    }
+    .score-bar.full { background: #16a34a; width: 100%; }
+
+    /* ── PIPELINE STEPS ── */
+    .pipeline { display: flex; gap: 0; }
+    .pipe-step {
+      flex: 1;
+      padding: 1.25rem 1rem;
+      border: 1px solid #e2e8f0;
+      border-right: none;
+      background: #fff;
+      position: relative;
+    }
+    .pipe-step:first-child { border-radius: 10px 0 0 10px; }
+    .pipe-step:last-child  { border-radius: 0 10px 10px 0; border-right: 1px solid #e2e8f0; }
+    .pipe-num {
+      width: 26px;
+      height: 26px;
+      background: #16a34a;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+    .pipe-step h3 { font-size: 0.875rem; font-weight: 600; color: #0f172a; margin-bottom: 0.25rem; }
+    .pipe-step p  { font-size: 0.75rem; color: #64748b; line-height: 1.5; }
+    .pipe-step a  { font-size: 0.75rem; color: #16a34a; text-decoration: none; font-weight: 500; display: inline-block; margin-top: 0.5rem; }
+    .pipe-step a:hover { text-decoration: underline; }
+
+    /* ── FILE LIST ── */
+    .file-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0.9rem;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #1e293b;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .file-item:hover { background: #f0fdf4; border-color: #bbf7d0; }
+    .file-item .fi-icon { font-size: 1.1rem; }
+    .file-item .fi-ext {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      background: #e2e8f0;
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    /* ── IMAGES ── */
+    .img-card img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      margin-top: 0.75rem;
+    }
+    .img-card p { font-size: 0.8rem; color: #64748b; margin-top: 0.5rem; }
+
+    /* ── ARCH DIAGRAM ── */
+    .arch-layers { display: flex; flex-direction: column; gap: 0.4rem; }
+    .arch-layer {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 7px;
+      font-size: 0.8rem;
+    }
+    .al-input   { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .al-conv    { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .al-pool    { background: #fefce8; border: 1px solid #fde68a; }
+    .al-gap     { background: #fdf4ff; border: 1px solid #e9d5ff; }
+    .al-dense   { background: #fff7ed; border: 1px solid #fed7aa; }
+    .al-out     { background: #fff1f2; border: 1px solid #fecdd3; }
+    .al-label   { font-weight: 600; color: #0f172a; min-width: 110px; }
+    .al-detail  { color: #64748b; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+      background: #fff;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .stat-row { grid-template-columns: 1fr 1fr; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .pipeline { flex-direction: column; }
+      .pipe-step { border-right: 1px solid #e2e8f0; border-bottom: none; border-radius: 0; }
+      .pipe-step:first-child { border-radius: 10px 10px 0 0; }
+      .pipe-step:last-child  { border-radius: 0 0 10px 10px; border-bottom: 1px solid #e2e8f0; }
+    }
+    @media (max-width: 480px) {
+      .stat-row { grid-template-columns: 1fr; }
+      .hero h2 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <span class="logo-pill">🌿</span>
+  <h1>Phytosense <span class="subtitle">Plant Stress Classifier</span></h1>
+  <nav class="header-nav">
+    <a href="#signals">Signals</a>
+    <a href="#results">Results</a>
+    <a href="#architecture">Model</a>
+    <a href="#files">Files</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <h2>🌱 Plant Bioelectric Signal Classification</h2>
+  <p>A 1D CNN trained on synthetic bioelectric signals to detect plant stress states from electrode readings.</p>
+  <div class="hero-badges">
+    <span class="badge">📡 AD620 + ADS1115 + ESP32</span>
+    <span class="badge">🤖 1D Convolutional CNN</span>
+    <span class="badge">5 Stress Classes</span>
+    <span class="badge">100% Test Accuracy</span>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- STATS -->
+  <div class="stat-row" style="margin-top:0;">
+    <div class="stat-card">
+      <div class="stat-icon si-green">🎯</div>
+      <div>
+        <div class="stat-val">100%</div>
+        <div class="stat-lbl">Test Accuracy</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-blue">📊</div>
+      <div>
+        <div class="stat-val">1,300</div>
+        <div class="stat-lbl">Total Samples</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-amber">🏷️</div>
+      <div>
+        <div class="stat-val">5</div>
+        <div class="stat-lbl">Stress Classes</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-rose">📏</div>
+      <div>
+        <div class="stat-val">500</div>
+        <div class="stat-lbl">Timesteps / Sample</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <p class="section-title">⚙️ ML Pipeline</p>
+  <div class="pipeline" style="margin-bottom:2rem;">
+    <div class="pipe-step">
+      <div class="pipe-num">1</div>
+      <h3>Hardware Input</h3>
+      <p>AD620 amplifier → ADS1115 ADC → ESP32 logs bioelectric signals at ~5 Hz</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">2</div>
+      <h3>Dataset Generation</h3>
+      <p>Synthetic signals simulating 5 stress states: 260 samples × 5 classes</p>
+      <a href="1_generate_dataset.py" target="_blank">📄 1_generate_dataset.py ↗</a>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">3</div>
+      <h3>Train CNN</h3>
+      <p>3-layer 1D CNN with batch norm, dropout, early stopping over 60 epochs</p>
+      <a href="2_train_cnn.py" target="_blank">📄 2_train_cnn.py ↗</a>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">4</div>
+      <h3>Evaluate</h3>
+      <p>Classification report + confusion matrix saved. 100% accuracy on test set</p>
+      <a href="classification_report.txt" target="_blank">📋 View Report ↗</a>
+    </div>
+  </div>
+
+  <!-- SIGNAL VIEWER -->
+  <p class="section-title" id="signals">📡 Interactive Signal Viewer</p>
+  <div class="card" style="margin-bottom:2rem;">
+    <div class="signal-controls">
+      <label for="classSelect">Plant State:</label>
+      <select class="select-box" id="classSelect">
+        <option value="0">🟢 Healthy</option>
+        <option value="1">🟡 Drought Stress</option>
+        <option value="2">🔵 Salt Stress</option>
+        <option value="3">🔴 Mechanical / Wound</option>
+        <option value="4">🟣 Heat Stress</option>
+      </select>
+      <label for="sampleSelect">Sample:</label>
+      <select class="select-box" id="sampleSelect">
+        <option value="0">Sample 1</option>
+        <option value="1">Sample 2</option>
+        <option value="2">Sample 3</option>
+      </select>
+      <button class="btn btn-green" onclick="loadSignal()">▶ Show Signal</button>
+      <span id="activeChip" class="class-chip chip-0">Healthy</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="signalChart"></canvas>
+    </div>
+    <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">
+      Time axis: 500 timesteps (~100 seconds @ 5 Hz). Y-axis: millivolts (mV). Data: synthetic bioelectric signals.
+    </p>
+  </div>
+
+  <!-- RESULTS -->
+  <p class="section-title" id="results">📈 Results & Evaluation</p>
+  <div class="grid-2">
+    <div class="card">
+      <h2 style="font-size:1rem;font-weight:600;margin-bottom:1rem;">Classification Report</h2>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1-Score</th>
+            <th>Support</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="class-chip chip-0">Healthy</span></td>
+            <td>1.000</td><td>1.000</td><td>1.000</td><td>52</td>
+          </tr>
+          <tr>
+            <td><span class="class-chip chip-1">Drought Stress</span></td>
+            <td>1.000</td><td>1.000</td><td>1.000</td><td>52</td>
+          </tr>
+          <tr>
+            <td><span class="class-chip chip-2">Salt Stress</span></td>
+            <td>1.000</td><td>1.000</td><td>1.000</td><td>52</td>
+          </tr>
+          <tr>
+            <td><span class="class-chip chip-3">Mech/Wound</span></td>
+            <td>1.000</td><td>1.000</td><td>1.000</td><td>52</td>
+          </tr>
+          <tr>
+            <td><span class="class-chip chip-4">Heat Stress</span></td>
+            <td>1.000</td><td>1.000</td><td>1.000</td><td>52</td>
+          </tr>
+          <tr>
+            <td><strong>Overall</strong></td>
+            <td><strong>1.000</strong></td><td><strong>1.000</strong></td><td><strong>1.000</strong></td><td><strong>260</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card img-card">
+      <h2 style="font-size:1rem;font-weight:600;">Training Curve & Confusion Matrix</h2>
+      <img src="training_results.png" alt="Training accuracy and confusion matrix" />
+      <p>Left: accuracy over epochs. Right: confusion matrix on 260 test samples — all correctly classified.</p>
+    </div>
+  </div>
+
+  <!-- SAMPLE SIGNALS IMAGE -->
+  <div class="card img-card" style="margin-bottom:2rem;">
+    <h2 style="font-size:1rem;font-weight:600;">Sample Signal Examples (all 5 classes)</h2>
+    <img src="sample_signal_examples.png" alt="Sample signal examples for all 5 plant stress classes" />
+    <p>Each class has a distinct bioelectric fingerprint used by the CNN to classify plant state.</p>
+  </div>
+
+  <!-- ARCHITECTURE -->
+  <p class="section-title" id="architecture">🧠 Model Architecture</p>
+  <div class="grid-2" style="margin-bottom:2rem;">
+    <div class="card">
+      <h2 style="font-size:1rem;font-weight:600;margin-bottom:1rem;">phytosense_1dcnn — Layer Stack</h2>
+      <div class="arch-layers">
+        <div class="arch-layer al-input">
+          <span class="al-label">Input</span>
+          <span class="al-detail">Shape: (500, 1) — single electrode channel</span>
+        </div>
+        <div class="arch-layer al-conv">
+          <span class="al-label">Conv1D × 16</span>
+          <span class="al-detail">kernel=9, ReLU, same padding + BatchNorm + MaxPool/2</span>
+        </div>
+        <div class="arch-layer al-conv">
+          <span class="al-label">Conv1D × 32</span>
+          <span class="al-detail">kernel=7, ReLU, same padding + BatchNorm + MaxPool/2</span>
+        </div>
+        <div class="arch-layer al-conv">
+          <span class="al-label">Conv1D × 64</span>
+          <span class="al-detail">kernel=5, ReLU, same padding + BatchNorm + MaxPool/2</span>
+        </div>
+        <div class="arch-layer al-gap">
+          <span class="al-label">GlobalAvgPool</span>
+          <span class="al-detail">Reduces sequence → fixed vector</span>
+        </div>
+        <div class="arch-layer al-dense">
+          <span class="al-label">Dense 32</span>
+          <span class="al-detail">ReLU + Dropout(0.3)</span>
+        </div>
+        <div class="arch-layer al-out">
+          <span class="al-label">Output 5</span>
+          <span class="al-detail">Softmax — one probability per stress class</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:1rem;font-weight:600;margin-bottom:1rem;">Training Details</h2>
+      <div style="display:flex;flex-direction:column;gap:0.6rem;font-size:0.875rem;">
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">Optimizer</span><span style="font-weight:600;">Adam (lr=0.001)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">Loss</span><span style="font-weight:600;">Sparse Categorical CE</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">Max Epochs</span><span style="font-weight:600;">60</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">Batch Size</span><span style="font-weight:600;">32</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">Early Stopping</span><span style="font-weight:600;">patience=10 (val_accuracy)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">LR Reduction</span><span style="font-weight:600;">×0.5 on plateau (patience=5)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0;">
+          <span style="color:#64748b;">Normalization</span><span style="font-weight:600;">Per-sample z-score</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.6rem 0.8rem;background:#f0fdf4;border-radius:7px;border:1px solid #bbf7d0;">
+          <span style="color:#15803d;font-weight:600;">Test Accuracy</span><span style="font-weight:700;color:#15803d;">100.0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILES -->
+  <p class="section-title" id="files">📁 Project Files</p>
+  <div class="grid-3">
+    <div class="card">
+      <h2 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem;">📜 Scripts</h2>
+      <div class="file-list">
+        <a class="file-item" href="1_generate_dataset.py" target="_blank">
+          <span class="fi-icon">🐍</span> 1_generate_dataset.py <span class="fi-ext">.py</span>
+        </a>
+        <a class="file-item" href="2_train_cnn.py" target="_blank">
+          <span class="fi-icon">🐍</span> 2_train_cnn.py <span class="fi-ext">.py</span>
+        </a>
+        <a class="file-item" href="requirements.txt" target="_blank">
+          <span class="fi-icon">📦</span> requirements.txt <span class="fi-ext">.txt</span>
+        </a>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem;">📊 Outputs</h2>
+      <div class="file-list">
+        <a class="file-item" href="classification_report.txt" target="_blank">
+          <span class="fi-icon">📋</span> classification_report.txt <span class="fi-ext">.txt</span>
+        </a>
+        <a class="file-item" href="training_results.png" target="_blank">
+          <span class="fi-icon">🖼️</span> training_results.png <span class="fi-ext">.png</span>
+        </a>
+        <a class="file-item" href="sample_signal_examples.png" target="_blank">
+          <span class="fi-icon">🖼️</span> sample_signal_examples.png <span class="fi-ext">.png</span>
+        </a>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:0.95rem;font-weight:600;margin-bottom:0.75rem;">🗂️ Data</h2>
+      <div class="file-list">
+        <a class="file-item" href="signals/phytosense_dataset.csv" target="_blank">
+          <span class="fi-icon">📑</span> phytosense_dataset.csv <span class="fi-ext">.csv</span>
+        </a>
+        <a class="file-item" href="signals/demo_samples.json" target="_blank">
+          <span class="fi-icon">📄</span> demo_samples.json <span class="fi-ext">.json</span>
+        </a>
+      </div>
+      <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.75rem;">1,300 samples × 500 timesteps (~12 MB CSV)</p>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<footer>
+  © 2026 Phytosense Project &nbsp;·&nbsp; 1D CNN Plant Stress Classification &nbsp;·&nbsp;
+  Hardware: AD620 + ADS1115 + ESP32
+</footer>
+
+<script>
+// ── Signal chart ──────────────────────────────────────────────────────────────
+let signalData = null;
+let chart = null;
+
+const CLASS_COLORS = ['#16a34a','#ca8a04','#2563eb','#dc2626','#9333ea'];
+const CLASS_BG     = ['#dcfce7','#fef3c7','#dbeafe','#ffe4e6','#fce7f3'];
+const CHIPS        = ['Healthy','Drought Stress','Salt Stress','Mech/Wound','Heat Stress'];
+const CHIP_CLASSES = ['chip-0','chip-1','chip-2','chip-3','chip-4'];
+
+async function loadData() {
+  try {
+    const res = await fetch('signals/demo_samples.json');
+    signalData = await res.json();
+  } catch(e) {
+    console.warn('Could not load demo_samples.json', e);
+  }
+}
+
+function buildChart(signal, classIdx) {
+  const ctx = document.getElementById('signalChart').getContext('2d');
+  const labels = Array.from({length: signal.length}, (_, i) => i);
+  const color  = CLASS_COLORS[classIdx];
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: CHIPS[classIdx] + ' (mV)',
+        data: signal,
+        borderColor: color,
+        backgroundColor: CLASS_BG[classIdx],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      plugins: {
+        legend: { labels: { font: { family: 'Inter', size: 12 }, color: '#374151' } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.parsed.y.toFixed(2)} mV`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 10, color: '#94a3b8', font: { size: 11 } },
+          grid:  { color: '#f1f5f9' },
+          title: { display: true, text: 'Timestep', color: '#94a3b8', font: { size: 11 } }
+        },
+        y: {
+          ticks: { color: '#94a3b8', font: { size: 11 } },
+          grid:  { color: '#f1f5f9' },
+          title: { display: true, text: 'mV', color: '#94a3b8', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function loadSignal() {
+  const classIdx  = parseInt(document.getElementById('classSelect').value);
+  const sampleIdx = parseInt(document.getElementById('sampleSelect').value);
+
+  // Update chip
+  const chip = document.getElementById('activeChip');
+  chip.textContent = CHIPS[classIdx];
+  chip.className = 'class-chip ' + CHIP_CLASSES[classIdx];
+
+  if (!signalData || !signalData.samples) {
+    // fallback: generate a simple sine-like signal so chart always shows something
+    const dummy = Array.from({length:500}, (_,i) => -165 + 5*Math.sin(i * 0.1 * (classIdx+1)));
+    buildChart(dummy, classIdx);
+    return;
+  }
+
+  // Find samples matching this class
+  const matching = signalData.samples.filter(s => s.label === classIdx);
+  const picked   = matching[sampleIdx % matching.length];
+  if (picked) buildChart(picked.signal, classIdx);
+}
+
+// Init
+loadData().then(() => loadSignal());
+</script>
+</body>
+</html>
